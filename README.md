@@ -16,20 +16,7 @@ A minimal multithreaded HTTP server for Windows. This project demonstrates servi
 
 ---
 
-## Build with CMake (Recommended)
-
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
-
-The executable will typically be located at:
-
-build\Release\server.exe
-
----
-
-## Build with g++ (MinGW Alternative)
+## Build with g++
 
 g++ -std=c++17 main.cpp server.cpp pages_login.cpp pages_dashboard.cpp pages_holiday.cpp -o server.exe -I"C:\Program Files\OpenSSL-Win64\include" "C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD\libssl.lib" "C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD\libcrypto.lib" -lws2_32
 

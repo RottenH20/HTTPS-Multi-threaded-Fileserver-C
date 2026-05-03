@@ -1,0 +1,175 @@
+#include "pages_holiday.h"
+
+// Return the holiday checker HTML content.
+std::string getHolidayPage() {
+    return R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Holiday Checker</title>
+<style>
+body{font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif;background:#f3f6fa;color:#111;margin:0;padding:20px}
+.card{max-width:720px;margin:40px auto;background:white;border-radius:12px;padding:24px;box-shadow:0 8px 24px rgba(10,20,40,0.06)}
+.field{margin-bottom:12px}
+label{display:block;margin-bottom:6px;color:#475569}
+input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc}
+button{background:#4f46e5;color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer}
+.result{margin-top:16px;padding:12px;background:#f8fafc;border-radius:8px}
+.small{font-size:13px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Holiday Checker</h2>
+  <p class="small">Enter your Festivo API key to check upcoming public holidays.</p>
+
+  <div class="field">
+    <label for="apiKey">API Key</label>
+    <input id="apiKey" placeholder="tok_v3_..." />
+  </div>
+
+  <div class="field">
+    <label for="country">Country (ISO)</label>
+    <input id="country" value="US" />
+  </div>
+
+  <div class="field">
+    <label for="yearSelect">Year (archival)</label>
+    <select id="yearSelect">
+      <option value="2025">2025</option>
+      <option value="2024">2024</option>
+      <option value="2023">2023</option>
+      <option value="2022">2022</option>
+      <option value="2021">2021</option>
+    </select>
+    <div class="small">This server provides archival holiday data only (2025–2021).</div>
+  </div>
+
+  <div class="field">
+    <label for="asOfDate">As-of date (optional, within selected year)</label>
+    <input id="asOfDate" type="date" />
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center">
+    <button id="check">Check Next Holiday</button>
+    <button id="save">Save API Key</button>
+    <div id="status" class="small"></div>
+  </div>
+
+  <div id="output" class="result" style="display:none"></div>
+</div>
+
+<script>
+async function fetchSavedKey(){
+  try{
+    const r = await fetch('/holiday/key');
+    if(!r.ok) return;
+    const j = await r.json();
+    if(j.api_key) document.getElementById('apiKey').value = j.api_key;
+  }catch(e){}
+}
+
+function daysBetween(d1, d2){
+  const ms = 24*60*60*1000;
+  const u1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+  const u2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+  return Math.round((u2 - u1)/ms);
+}
+
+async function checkHoliday(){
+  const out = document.getElementById('output');
+  out.style.display='none';
+  const api_key = document.getElementById('apiKey').value.trim();
+  const country = document.getElementById('country').value.trim() || 'US';
+  const year = document.getElementById('yearSelect').value;
+  const asOf = document.getElementById('asOfDate').value;
+  if(!api_key){ out.textContent='Please provide an API key'; out.style.display='block'; return; }
+  document.getElementById('status').textContent='Checking...';
+  try{
+    const params = new URLSearchParams({api_key, country});
+    if (year) params.set('year', year);
+    if (asOf) params.set('as_of', asOf);
+    const r = await fetch('/holiday/next?'+params.toString());
+    if(!r.ok){ const t = await r.text(); out.textContent=`Error: ${r.status} ${t}`; out.style.display='block'; document.getElementById('status').textContent=''; return; }
+    const j = await r.json();
+    if(j.error){ out.textContent='Error: '+j.error; out.style.display='block'; document.getElementById('status').textContent=''; return; }
+    const ref = asOf ? new Date(asOf+'T00:00:00Z') : new Date();
+    const dateStr = j.date; // YYYY-MM-DD
+    const d = new Date(dateStr+'T00:00:00Z');
+    const days = daysBetween(ref, d);
+    out.innerHTML = `<strong>Next holiday:</strong> ${j.name} <br><strong>Date:</strong> ${j.date} <br><strong>Days from now:</strong> ${days}`;
+    // show raw Festivo JSON if present (safe insertion via textContent)
+    if (j.festivo_raw) {
+      try {
+        const festObj = JSON.parse(j.festivo_raw);
+        const details = document.createElement('details');
+        details.style.marginTop = '8px';
+        const summary = document.createElement('summary');
+        summary.textContent = 'Raw Festivo response';
+        details.appendChild(summary);
+        const pre = document.createElement('pre');
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.maxHeight = '300px';
+        pre.style.overflow = 'auto';
+        pre.style.padding = '8px';
+        pre.style.background = '#fff';
+        pre.style.borderRadius = '8px';
+        pre.style.border = '1px solid #e2e8f0';
+        pre.textContent = JSON.stringify(festObj, null, 2);
+        details.appendChild(pre);
+        out.appendChild(details);
+      } catch (e) {
+        const details = document.createElement('details');
+        details.style.marginTop = '8px';
+        const summary = document.createElement('summary');
+        summary.textContent = 'Raw Festivo response (unparsed)';
+        details.appendChild(summary);
+        const pre = document.createElement('pre');
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.maxHeight = '300px';
+        pre.style.overflow = 'auto';
+        pre.style.padding = '8px';
+        pre.style.background = '#fff';
+        pre.style.borderRadius = '8px';
+        pre.style.border = '1px solid #e2e8f0';
+        pre.textContent = j.festivo_raw;
+        details.appendChild(pre);
+        out.appendChild(details);
+      }
+    }
+    out.style.display='block';
+    document.getElementById('status').textContent='Done';
+  }catch(err){ out.textContent='Network error'; out.style.display='block'; document.getElementById('status').textContent=''; }
+}
+
+async function saveKey(){
+  const api_key = document.getElementById('apiKey').value.trim();
+  if(!api_key){ document.getElementById('status').textContent='Provide a key to save'; return; }
+  document.getElementById('status').textContent='Saving...';
+  try{
+    const r = await fetch('/holiday/key', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'api_key='+encodeURIComponent(api_key)});
+    if(r.ok){ document.getElementById('status').textContent='Saved'; } else { document.getElementById('status').textContent='Save failed'; }
+  }catch(e){ document.getElementById('status').textContent='Save failed'; }
+}
+
+function updateAsOfBounds(){
+  const year = document.getElementById('yearSelect').value;
+  const min = year + '-01-01';
+  const max = year + '-12-31';
+  const asOf = document.getElementById('asOfDate');
+  asOf.min = min; asOf.max = max;
+  if(asOf.value && (asOf.value < min || asOf.value > max)) asOf.value = '';
+}
+
+window.onload = ()=>{
+  fetchSavedKey();
+  document.getElementById('check').addEventListener('click', checkHoliday);
+  document.getElementById('save').addEventListener('click', saveKey);
+  document.getElementById('yearSelect').addEventListener('change', updateAsOfBounds);
+  updateAsOfBounds();
+}
+</script>
+</body>
+</html>)HTML";
+}

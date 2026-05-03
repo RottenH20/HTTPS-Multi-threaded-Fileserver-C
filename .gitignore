@@ -1,0 +1,49 @@
+# .gitignore for this C++ HTTPS server project
+
+# Compiled object files and executables
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+
+# Build directories
+/build/
+/bin/
+/out/
+/dist/
+cmake-build-*
+
+# Visual Studio / IDE files
+.vs/
+.vscode/
+.idea/
+*.vcxproj.user
+*.suo
+*.user
+
+# TLS certificates and private keys (do not commit)
+cert.pem
+key.pem
+*.pem
+*.key
+
+# Per-user secret keys and local test captures
+user_data/*/.festivo_key
+cookies.txt
+headers.txt
+rsp_body.txt
+rsp_header.txt
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini

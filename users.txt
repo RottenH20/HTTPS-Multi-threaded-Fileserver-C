@@ -1,0 +1,4 @@
+# Add valid username/password pairs in the format username:password
+aaron:aaron123
+chelsea:chelsea123
+zac:zac23
